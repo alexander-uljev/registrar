@@ -75,12 +75,6 @@ class AbstractRegistrar
       }
 	  end
 	
-	  # Looks up in database for the record with specified email. Returns true if it exists or
-	  # false if it doesn't. Should be realised in a subclass.
-	  def check_email(email)
-	    # Don't
-	  end
-	
 	  # Checks if the values provided match each other. Returns true if yes, false if no.
 	  # Values must be a hash like { 'values_name' => [value_1, value_2, ..., value_n] }.
 	  # This inconvinience supports clear error message for different kinds of checks.
@@ -91,7 +85,50 @@ class AbstractRegistrar
 		    fail("#{values_name} provided do not match.") unless match.equal? true		
 	    end
 	  end
+	  
+	  # Looks up in database for the record with specified email. Returns true if it exists or
+	  # false if it doesn't. Should be realised in a subclass.
+	  def check_email(email, record)
+	    # Look for the record in a database
+      fail("#{email} is already registered.") unless record.equal? nil
+	  end
+    
+    # Partialy released. Checks time of user's last registration attempt and fails if it's less
+    # then allowed.
+    def check_interval(record)
+      # Find a record in database
+      unless record.equal? nil
+        reg_time = Time.new(record[:time]) # Can be moved to parent class
+        interval =  (Time.now - reg_time).to_i / 60 # Minutes, no floating
+        check = interval < @allowed_interval
+        if check.equal? false then
+          fail("#{user_ip} was already used to register an account. Next attempt will be available \
+              in #{interval} minutes")
+        end
+      end
+    end
 	
+    # Forms user hash for inserting in users table.
+    def form_user
+      {
+        :email    => form_data['email'],
+        :password => form_data['password'],
+        :name     => form_data['name']       # Make proper greetings if it's nil
+      }
+    end
+    
+    # A draft. When released, stores an IP address and time in a database to support frequent
+    # registration check feature.
+    def register_ip(user_ip)
+      # Checking database for existing record
+      {
+        :ip   => user_ip,
+        :time => Time.now # Check date format compability
+      }
+      # Inserting or updating a record
+    end
+    
+  
 	  # A method with compact name that helped me to make this code shorter, simpler and clearer.
 	  def fail(reason)
 	    raise RegistrationError, reason
